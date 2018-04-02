@@ -1,0 +1,437 @@
+var AWS = require("aws-sdk");
+
+AWS.config.update({
+  region: "us-east-1"
+});
+
+var docClient = new AWS.DynamoDB.DocumentClient();
+
+var table = "MedConnectBotDynamo";
+
+
+exports.handler = (event, context, callback) => {
+   try {
+        console.log(`event.bot.name=${event.bot.name}`);
+        dispatch(event, (response) => callback(null, response));
+    } catch (err) {
+        callback(err);
+    }
+};
+
+
+/**
+ * Called when the user specifies an intent for this skill.
+ */
+function dispatch(intentRequest, callback) {
+    console.log(`dispatch userId=${intentRequest.userId}, intentName=${intentRequest.currentIntent.name}`);
+
+    const intentName = intentRequest.currentIntent.name;
+
+    // Dispatch to your skill's intent handlers
+    if (intentName === 'MedInquiry') {
+        return medInquiry(intentRequest, callback);
+    }
+	else if (intentName === 'AdverseEffect') {
+        return adverseEffect(intentRequest, callback);
+    }
+	else if (intentName === 'ProductComplaint') {
+        return productComplaint(intentRequest, callback);
+    }
+	else if (intentName === 'ExistingCase') {
+        return processExistingCase(intentRequest, callback);
+    }else if (intentName === 'NewCase') {
+        return processNewCase(intentRequest, callback);
+    }else if (intentName === 'ResolveInquiry') {
+        return processResolveInquiry(intentRequest, callback);
+    }
+    throw new Error(`Intent with name ${intentName} not supported`);
+}
+
+
+
+
+//Existing case
+function processExistingCase(intentRequest, callback){
+	const userId=intentRequest.currentIntent.slots.CaseNumber;
+	var params = {
+    TableName: table,
+    Key:{
+        "userId": userId
+    }
+	};
+	getDataFromDynamo(params).then(res=>{
+	console.log("Retieved datas"+JSON.stringify(res));
+	callback(close(intentRequest.sessionAttributes, 'Fulfilled',{ 
+		contentType: 'PlainText', content: `We are successfully able to retrieve your case ${userId}. Here are the details of it : ${JSON.stringify(res)}`}));
+	});
+
+
+}
+//Product Complaint  Method
+function productComplaint(intentRequest, callback) {
+	const complaint = intentRequest.currentIntent.slots.Complaint;
+	
+	const userId=makeid();
+var params = {
+    TableName:table,
+    Item:{
+        "userId": userId,
+		"subcaseType":intentRequest.sessionAttributes.subcaseType,
+		"complaint":intentRequest.currentIntent.slots.Complaint
+    }
+};
+	console.log("Adding a new item...");
+	insertIntoDynamo(params);
+	callback(close(intentRequest.sessionAttributes, 'Fulfilled',{ 
+		contentType: 'PlainText', content: `Your product complaint has been processed. Your complaint number is ${userId}.Have a great day! `}));
+	
+}
+
+//adverseEffect  Method
+function adverseEffect(intentRequest, callback) {
+	const adverse = intentRequest.currentIntent.slots.Adverse;
+	
+	const userId=makeid();
+var params = {
+    TableName:table,
+    Item:{
+        "userId": userId,
+		"subcaseType":intentRequest.sessionAttributes.subcaseType,
+		"adverseEffect":intentRequest.currentIntent.slots.Adverse
+    }
+};
+	console.log("Adding a new item...");
+	insertIntoDynamo(params);
+	
+	callback(close(intentRequest.sessionAttributes, 'Fulfilled',{ 
+		contentType: 'PlainText', content: `Your adverse effect has been recorded.Your case number is ${userId}. Have a great day!` }));
+	
+}
+
+
+function processResolveInquiry(intentRequest, callback){
+
+
+	var productName = intentRequest.currentIntent.slots.ProductName;
+	const country = intentRequest.currentIntent.slots.Country;
+	 const source = intentRequest.invocationSource;
+	const outputSessionAttributes = intentRequest.sessionAttributes || {};
+	console.log("processResolveInquiry intentRequest   "+JSON.stringify(intentRequest));
+	if(productName===null){
+		productName=	intentRequest.sessionAttributes.productName
+		if(intentRequest.sessionAttributes.productName == null){
+			callback(elicitSlot(outputSessionAttributes, intentRequest.currentIntent.name, intentRequest.currentIntent.slots, 'ProductName'));
+		}
+	}
+	console.log("productNames   "+productName);
+	if (source === 'DialogCodeHook') {
+	console.log("inside DialogCodeHook   of processResolveInquiry");
+		if(productName){
+				outputSessionAttributes.source='Chat';
+				outputSessionAttributes.handling='Chat';
+			
+				outputSessionAttributes.priority='Medium';
+				outputSessionAttributes.name='NA';
+				outputSessionAttributes.contact='NA';
+				outputSessionAttributes.indication='Default';
+				outputSessionAttributes.classification='Default';
+						}
+	    callback(delegate(outputSessionAttributes, intentRequest.currentIntent.slots));
+        return;		
+	}
+	
+	
+			
+			var params = {
+				TableName: 'ProductDetails',
+				Key:{
+					"productName": productName
+					
+				},
+				KeyConditionExpression: "#country = :country"
+
+				};
+				getDataFromDynamo(params).then(res=>{
+				console.log("Retieved productDetails"+JSON.stringify(res));
+				if (isEmptyObject(res)){
+					console.log("create a case");
+					creatingCase(intentRequest, callback);
+				}else{
+					callback(close(intentRequest.sessionAttributes, 'Fulfilled',{ 
+					contentType: 'PlainText', content: `Thank you for your inquiry. This is what I found. The dosage is ${res.Item.dosage}  and  ${res.Item.isAvailibility} in ${res.Item.country} `}));
+				}
+					
+				});
+	
+	
+}
+
+//Process a new case
+function processNewCase(intentRequest, callback){
+	console.log("processNewCase intentRequest   "+JSON.stringify(intentRequest));
+	const classType = intentRequest.currentIntent.slots.Class;
+    const productName = intentRequest.currentIntent.slots.PName;
+	
+	const inquiry = intentRequest.currentIntent.slots.Inquiry;
+    const source = intentRequest.invocationSource;
+	const classTypes = ['yes', 'ya', 'y'];
+	
+	intentRequest.sessionAttributes.productName=productName;
+	console.log("inside processNewCase" +productName);
+	  if (source === 'DialogCodeHook') {
+	  console.log("inside DialogCodeHook   of processNewCase");
+		if(inquiry){
+			intentRequest.sessionAttributes.inquiry=inquiry;
+		}
+		
+		
+		if(classType && classTypes.indexOf(classType.toLowerCase()) === -1){
+			  intentRequest.sessionAttributes.type='other';
+			}else{
+				//For doctor as Yes
+				intentRequest.sessionAttributes.type='HCP';
+			}
+	    callback(delegate(intentRequest.sessionAttributes, intentRequest.currentIntent.slots));
+        return;		
+	}
+				intentRequest.sessionAttributes.source='Chat';
+				intentRequest.sessionAttributes.handling='Chat';
+				intentRequest.sessionAttributes.priority='Medium';
+				intentRequest.sessionAttributes.name='NA';
+				intentRequest.sessionAttributes.contact='NA';
+				intentRequest.sessionAttributes.indication='Default';
+				intentRequest.sessionAttributes.classification='Default';	
+
+				
+creatingCase(intentRequest, callback);				
+}
+
+
+//Medical Inquiry Method
+function medInquiry(intentRequest, callback) {
+	console.log("medInquiry intentRequest   "+JSON.stringify(intentRequest));
+	const caseType = intentRequest.currentIntent.slots.CaseType;
+    const inquiryType = intentRequest.currentIntent.slots.InquiryType;
+
+	const inquiryTypes=['medical inquiry', 'adverse effect', 'product complaint'];
+	const caseTypes=['new','existing']
+	var caseTypeIndex=-1;
+	if(caseType && caseType.toLowerCase().search(caseTypes[0])!= -1){
+		caseTypeIndex=0;
+	}
+	if (caseType &&  caseType.toLowerCase().search(caseTypes[1])!= -1){
+		caseTypeIndex=1;
+	}
+    const source = intentRequest.invocationSource;
+
+    if (source === 'DialogCodeHook') {
+        // Perform basic validation on the supplied input slots.  Use the elicitSlot dialog action to re-prompt for the first violation detected.
+        const slots = intentRequest.currentIntent.slots;
+        const outputSessionAttributes = intentRequest.sessionAttributes || {};
+		switch (caseTypeIndex){
+			case -1:
+		 	  const validationResult= buildValidationResult(false, 'CaseType', `Sorry, I don't understand what you are saying. You can select between a new and existing case.`);
+			  break;
+			  // callback(elicitSlot(outputSessionAttributes, intentRequest.currentIntent.name, slots, 'Class'));
+			  
+			case 0: 
+		
+				intentRequest.currentIntent.name='NewCase';
+				var param1={
+			    	Class:null,
+					Inquiry:null,
+					PName:null
+				};
+				intentRequest.currentIntent.slots=param1;
+					console.log("calling new case   ");
+				callback(elicitSlot(outputSessionAttributes, 'NewCase', intentRequest.currentIntent.slots, 'Class'));
+				 break;
+			case 1: 
+				intentRequest.currentIntent.name='ExistingCase';
+				var param1={
+			    	CaseNumber:null
+				};
+				intentRequest.currentIntent.slots=param1;
+				callback(elicitSlot(outputSessionAttributes, 'ExistingCase', intentRequest.currentIntent.slots, 'CaseNumber'));
+			 break;
+		}
+		
+		if(inquiryType && inquiryTypes.indexOf(inquiryType.toLowerCase()) === -1){
+			 const validationResult= buildValidationResult(false, 'InquiryType', `Sorry, I don't understand what you are saying. You can report a medical inquiry, an adverse effect or a product compliant only.`);
+			  if (!validationResult.isValid) {
+				slots[`${validationResult.violatedSlot}`] = null;
+				callback(elicitSlot(intentRequest.sessionAttributes, intentRequest.currentIntent.name, slots, validationResult.violatedSlot, validationResult.message));
+				return;
+			}
+		}else if(inquiryType && inquiryTypes.indexOf(inquiryType.toLowerCase()) != -1) {
+			if(inquiryTypes.indexOf(inquiryType.toLowerCase()) === 0){
+				outputSessionAttributes.subcaseType='MI';
+				callback(elicitSlot(outputSessionAttributes, intentRequest.currentIntent.name, slots, 'CaseType'));
+			}else if(inquiryTypes.indexOf(inquiryType.toLowerCase()) === 1){
+				outputSessionAttributes.subcaseType='AE';
+				intentRequest.currentIntent.name='AdverseEffect';
+				var param1={
+			    	Adverse:null
+				};
+				intentRequest.currentIntent.slots=param1;
+				callback(elicitSlot(outputSessionAttributes, 'AdverseEffect', intentRequest.currentIntent.slots, 'Adverse'));
+			}
+			else if(inquiryTypes.indexOf(inquiryType.toLowerCase()) === 2){
+				outputSessionAttributes.subcaseType='PC';
+				intentRequest.currentIntent.name='ProductComplaint';
+				var param1={
+			    	Complaint:null
+				};
+				intentRequest.currentIntent.slots=param1;
+				callback(elicitSlot(outputSessionAttributes, 'ProductComplaint', intentRequest.currentIntent.slots, 'Complaint'));
+			}	
+			
+		}
+		
+		
+		
+		
+		
+        callback(delegate(outputSessionAttributes, intentRequest.currentIntent.slots));
+        return;
+    }
+
+
+
+}
+
+	
+	
+	
+	// --------------- Helpers to build responses which match the structure of the necessary dialog actions -----------------------
+
+function elicitSlot(sessionAttributes, intentName, slots, slotToElicit, message) {
+ if (message == null) {
+        return {
+        sessionAttributes,
+        dialogAction: {
+            type: 'ElicitSlot',
+            intentName,
+            slots,
+            slotToElicit
+          
+        },
+    };
+    }   
+
+   return {
+        sessionAttributes,
+        dialogAction: {
+            type: 'ElicitSlot',
+            intentName,
+            slots,
+            slotToElicit,
+            message,
+        },
+    };
+}
+
+function close(sessionAttributes, fulfillmentState, message) {
+    return {
+        sessionAttributes,
+        dialogAction: {
+            type: 'Close',
+            fulfillmentState,
+            message,
+        },
+    };
+}
+
+function delegate(sessionAttributes, slots) {
+    return {
+        sessionAttributes,
+        dialogAction: {
+            type: 'Delegate',
+            slots,
+        },
+    };
+}
+
+function buildValidationResult(isValid, violatedSlot, messageContent) {
+    if (messageContent == null) {
+        return {
+            isValid,
+            violatedSlot,
+        };
+    }
+    return {
+        isValid,
+        violatedSlot,
+        message: { contentType: 'PlainText', content: messageContent },
+    };
+}
+
+// ---------------- Helper Functions --------------------------------------------------
+	
+	
+function makeid() {
+  var text = "";
+  var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+  for (var i = 0; i < 5; i++)
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+  return text;
+}
+function insertIntoDynamo(params){
+
+	docClient.put(params, function(err, data) {
+		if (err) {
+			console.error("Unable to add item. Error JSON:", JSON.stringify(err, null, 2));
+		} else {
+			console.log("Added item:", JSON.stringify(data, null, 2));
+		}
+	});
+	
+}
+function getDataFromDynamo(params) {
+
+return new Promise((resolve,reject)=>{
+docClient.get(params, function(err, data) {
+    if (err) {
+        console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2));
+    } else if(data){
+        console.log("GetItem succeeded:", JSON.stringify(data));
+		resolve(data);
+    }
+});
+});
+
+
+}
+
+//Creating a case in DynamoDB
+function creatingCase(intentRequest, callback){
+const userId=makeid();
+var params = {
+    TableName:table,
+    Item:{
+        "userId": userId,
+        "type": intentRequest.sessionAttributes.type,
+        "source":intentRequest.sessionAttributes.source,
+		"subcaseType":intentRequest.sessionAttributes.subcaseType,
+		"priority":intentRequest.sessionAttributes.priority,
+		"name":intentRequest.sessionAttributes.name,
+		"contact":intentRequest.sessionAttributes.contact,
+		"indication":intentRequest.sessionAttributes.indication,
+		"classification":intentRequest.sessionAttributes.classification,
+		"inquiry":intentRequest.currentIntent.slots.Inquiry
+    }
+};
+
+	console.log("Adding a new item...");
+	insertIntoDynamo(params);
+	callback(close(intentRequest.sessionAttributes, 'Fulfilled',{ 
+		contentType: 'PlainText', content: `Sorry I couldnot find the details about your inquiry. However, I will create a case for you. Your case number is ${userId}.` }));
+}
+
+//Empty Json Check 
+function isEmptyObject(obj) {
+  return !Object.keys(obj).length;
+}
+	
