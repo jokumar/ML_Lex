@@ -1,0 +1,489 @@
+{
+  "metadata": {
+    "schemaVersion": "1.0",
+    "importType": "LEX",
+    "importFormat": "JSON"
+  },
+  "resource": {
+    "name": "MedConnectBot",
+    "version": "9",
+    "intents": [
+      {
+        "name": "NewCase",
+        "version": "23",
+        "fulfillmentActivity": {
+          "type": "CodeHook",
+          "codeHook": {
+            "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+            "messageVersion": "1.0"
+          }
+        },
+        "sampleUtterances": [],
+        "slots": [
+          {
+            "name": "Class",
+            "slotConstraint": "Required",
+            "slotType": "class",
+            "slotTypeVersion": "2",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Are you a doctor?"
+                }
+              ],
+              "maxAttempts": 2,
+              "responseCard": "{\"version\":1,\"contentType\":\"application/vnd.amazonaws.card.generic\",\"genericAttachments\":[{\"buttons\":[{\"text\":\"Yes\",\"value\":\"Yes\"},{\"text\":\"No\",\"value\":\"No\"}]}]}"
+            },
+            "priority": 1,
+            "sampleUtterances": []
+          },
+          {
+            "name": "Inquiry",
+            "slotConstraint": "Required",
+            "slotType": "inquiry",
+            "slotTypeVersion": "2",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Please state your inquiry?"
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 4,
+            "sampleUtterances": []
+          },
+          {
+            "name": "PName",
+            "slotConstraint": "Required",
+            "slotType": "Related_Inquiry_Product",
+            "slotTypeVersion": "1",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "What is the product name?"
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 3,
+            "sampleUtterances": []
+          }
+        ],
+        "dialogCodeHook": {
+          "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+          "messageVersion": "1.0"
+        }
+      },
+      {
+        "name": "MedInquiry",
+        "version": "16",
+        "fulfillmentActivity": {
+          "type": "CodeHook",
+          "codeHook": {
+            "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+            "messageVersion": "1.0"
+          }
+        },
+        "sampleUtterances": [
+          "Hi",
+          "Hello",
+          "Good Morning"
+        ],
+        "slots": [
+          {
+            "name": "CaseType",
+            "slotConstraint": "Required",
+            "slotType": "caseType",
+            "slotTypeVersion": "2",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Are you reporting new case or following up on an existing one?"
+                }
+              ],
+              "maxAttempts": 2,
+              "responseCard": "{\"version\":1,\"contentType\":\"application/vnd.amazonaws.card.generic\",\"genericAttachments\":[{\"buttons\":[{\"text\":\"New\",\"value\":\"new\"},{\"text\":\"Existing\",\"value\":\"existing\"}]}]}"
+            },
+            "priority": 2,
+            "sampleUtterances": []
+          },
+          {
+            "name": "InquiryType",
+            "slotConstraint": "Required",
+            "slotType": "inquiryType",
+            "slotTypeVersion": "2",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Hi. Would you like to report a medical inquiry, an adverse effect, or a product complaint today?"
+                }
+              ],
+              "maxAttempts": 2,
+              "responseCard": "{\"version\":1,\"contentType\":\"application/vnd.amazonaws.card.generic\",\"genericAttachments\":[{\"imageUrl\":\"https://s3.amazonaws.com/med-connect/image1.jpg\",\"title\":\"Inquiry\",\"buttons\":[{\"text\":\"Product Complaint\",\"value\":\"product complaint\"},{\"text\":\"Adverse Effect\",\"value\":\"adverse effect\"},{\"text\":\"Medical Inquiry\",\"value\":\"Medical\"}]},{\"buttons\":[]}]}"
+            },
+            "priority": 1,
+            "sampleUtterances": []
+          }
+        ],
+        "dialogCodeHook": {
+          "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+          "messageVersion": "1.0"
+        }
+      },
+      {
+        "name": "ExistingCase",
+        "version": "4",
+        "fulfillmentActivity": {
+          "type": "CodeHook",
+          "codeHook": {
+            "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+            "messageVersion": "1.0"
+          }
+        },
+        "sampleUtterances": [],
+        "slots": [
+          {
+            "name": "CaseNumber",
+            "slotConstraint": "Required",
+            "slotType": "caseNumber",
+            "slotTypeVersion": "6",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Please provide your case number."
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 1,
+            "sampleUtterances": []
+          }
+        ]
+      },
+      {
+        "name": "ResolveInquiry",
+        "version": "18",
+        "fulfillmentActivity": {
+          "type": "CodeHook",
+          "codeHook": {
+            "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+            "messageVersion": "1.0"
+          }
+        },
+        "sampleUtterances": [
+          "what is it's dose",
+          "I recently travelled to {Country} I would like to know if {ProductName} is available there",
+          "What is the dosage",
+          "What is its dosage",
+          "dosage",
+          "dose"
+        ],
+        "slots": [
+          {
+            "name": "Country",
+            "slotConstraint": "Optional",
+            "slotType": "AMAZON.Country",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "In which country are you looking for?"
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 2,
+            "sampleUtterances": []
+          },
+          {
+            "name": "ProductName",
+            "slotConstraint": "Optional",
+            "slotType": "Related_Inquiry_Product",
+            "slotTypeVersion": "1",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "What is the product name for which you are inquiring?"
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 1,
+            "sampleUtterances": []
+          }
+        ],
+        "dialogCodeHook": {
+          "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+          "messageVersion": "1.0"
+        },
+        "conclusionStatement": {
+          "messages": [
+            {
+              "contentType": "PlainText",
+              "content": "Hope this helps ."
+            }
+          ]
+        }
+      },
+      {
+        "name": "AdverseEffect",
+        "version": "1",
+        "fulfillmentActivity": {
+          "type": "CodeHook",
+          "codeHook": {
+            "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+            "messageVersion": "1.0"
+          }
+        },
+        "sampleUtterances": [],
+        "slots": [
+          {
+            "name": "Adverse",
+            "slotConstraint": "Required",
+            "slotType": "adverseComment",
+            "slotTypeVersion": "1",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Please tell me a little about what happened?"
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 1,
+            "sampleUtterances": []
+          }
+        ]
+      },
+      {
+        "name": "ProductComplaint",
+        "version": "3",
+        "fulfillmentActivity": {
+          "type": "CodeHook",
+          "codeHook": {
+            "uri": "arn:aws:lambda:us-east-1:092906944273:function:MedConnectBotLambda",
+            "messageVersion": "1.0"
+          }
+        },
+        "sampleUtterances": [],
+        "slots": [
+          {
+            "name": "Complaint",
+            "slotConstraint": "Required",
+            "slotType": "complaint",
+            "slotTypeVersion": "2",
+            "valueElicitationPrompt": {
+              "messages": [
+                {
+                  "contentType": "PlainText",
+                  "content": "Please tell me a little about what happened?"
+                }
+              ],
+              "maxAttempts": 2
+            },
+            "priority": 1,
+            "sampleUtterances": []
+          }
+        ]
+      }
+    ],
+    "slotTypes": [
+      {
+        "name": "Related_Inquiry_Product",
+        "version": "1",
+        "enumerationValues": [
+          {
+            "value": "Motrin",
+            "synonyms": []
+          },
+          {
+            "value": "Ibuprofin",
+            "synonyms": []
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "name": "adverseComment",
+        "version": "1",
+        "enumerationValues": [
+          {
+            "value": "comments",
+            "synonyms": []
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "name": "inquiryType",
+        "version": "2",
+        "enumerationValues": [
+          {
+            "value": "product complaint"
+          },
+          {
+            "value": "adverse effect"
+          },
+          {
+            "value": "medical inquiry"
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "name": "inquiry",
+        "version": "2",
+        "enumerationValues": [
+          {
+            "value": "I recently traveled to "
+          },
+          {
+            "value": "I would like to know if {product} is available that country?"
+          },
+          {
+            "value": "What is the dosage "
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "name": "complaint",
+        "version": "2",
+        "enumerationValues": [
+          {
+            "value": "This is not good"
+          },
+          {
+            "value": "complaint"
+          },
+          {
+            "value": "I am not happy"
+          },
+          {
+            "value": "I have a complaint"
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "name": "caseNumber",
+        "version": "6",
+        "enumerationValues": [
+          {
+            "value": "c"
+          },
+          {
+            "value": "uid-"
+          },
+          {
+            "value": "29e87491-316e-4b0b-808f-1757daec0b2c"
+          },
+          {
+            "value": "uid"
+          },
+          {
+            "value": "3"
+          },
+          {
+            "value": "1 c"
+          },
+          {
+            "value": "4d38296d-cb2f-45d3-8c01-10993fe392ff"
+          },
+          {
+            "value": "4"
+          },
+          {
+            "value": "US-18-000031"
+          },
+          {
+            "value": "5"
+          },
+          {
+            "value": "6"
+          },
+          {
+            "value": "7be3a7a9-9b2b-4212-a7ad-7fd5f4af7d36"
+          },
+          {
+            "value": "ao1no8ka4qbswc7ca4fe60cfy2gcbokx"
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "name": "class",
+        "version": "2",
+        "enumerationValues": [
+          {
+            "value": "No"
+          },
+          {
+            "value": "Yes"
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      },
+      {
+        "description": "caseType",
+        "name": "caseType",
+        "version": "2",
+        "enumerationValues": [
+          {
+            "value": "old case"
+          },
+          {
+            "value": "new"
+          },
+          {
+            "value": "existing"
+          },
+          {
+            "value": "existing case"
+          },
+          {
+            "value": "old"
+          },
+          {
+            "value": "new case"
+          }
+        ],
+        "valueSelectionStrategy": "ORIGINAL_VALUE"
+      }
+    ],
+    "voiceId": "0",
+    "childDirected": false,
+    "locale": "en-US",
+    "idleSessionTTLInSeconds": 180,
+    "clarificationPrompt": {
+      "messages": [
+        {
+          "contentType": "PlainText",
+          "content": "Sorry ,I don't think I understood your query"
+        },
+        {
+          "contentType": "PlainText",
+          "content": "Sorry, can you please repeat that?"
+        }
+      ],
+      "maxAttempts": 5
+    },
+    "abortStatement": {
+      "messages": [
+        {
+          "contentType": "PlainText",
+          "content": "Sorry, I could not understand. Goodbye."
+        }
+      ]
+    }
+  }
+}
